@@ -1,7 +1,13 @@
 import axios from 'axios'
 
+// Vite automatically sets import.meta.env.PROD to true when building for Vercel
+const isProduction = import.meta.env.PROD
+
 const api = axios.create({
-  baseURL: '/api/v1',
+  // In production, point directly to the backend. Locally, use the Vite proxy.
+  baseURL: isProduction 
+    ? 'https://scholanexusapi.vercel.app/api/v1' 
+    : '/api/v1',
   headers: { 'Content-Type': 'application/json' },
 })
 
