@@ -6,8 +6,17 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      '/api': 'http://localhost:8000',
-      '/ws': { target: 'ws://localhost:8000', ws: true }
+      '/api': {
+        target: 'https://scholanexusapi.vercel.app',
+        changeOrigin: true,
+        secure: true
+      },
+      '/ws': { 
+        target: 'wss://scholanexusapi.vercel.app', 
+        ws: true,
+        changeOrigin: true,
+        secure: true
+      }
     }
   }
 })
