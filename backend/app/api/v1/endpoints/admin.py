@@ -273,12 +273,31 @@ def list_subjects(db: Session = Depends(get_db), _=Depends(require_admin)):
 
 @router.post("/subjects", response_model=SubjectResponse)
 def create_subject(data: SubjectCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
-    if db.query(Subject).filter(Subject.code == data.code).first():
+    # Standardize the incoming subject code format
+    clean_code = data.code.strip().upper()
+
+    # Query the database using the clean uppercase code string
+    if db.query(Subject).filter(Subject.code == clean_code).first():
         raise HTTPException(status_code=400, detail="Subject code already exists")
-    subj = Subject(**data.model_dump())
+    
+    # Map payload properties and override code cleanly
+    payload = data.model_dump()
+    payload["code"] = clean_code
+    
+    subj = Subject(**payload)
     db.add(subj)
     db.commit()
-    db.refresh(subj)
+    
+    try:
+        db.refresh(subj)
+    except Exception as e:
+        # Fallback safeguard: if database defaults fail to refresh, manually assign state
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database integrity verification error on refresh: {str(e)}"
+        )
+        
     return subj
 
 
