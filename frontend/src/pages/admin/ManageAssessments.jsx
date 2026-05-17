@@ -11,6 +11,7 @@ const ASSESSMENT_TYPES = [
   { value: 'midterm_exam',  label: 'Mid-Term Exam' },
   { value: 'terminal_exam', label: 'Terminal Exam' },
   { value: 'annual_exam',   label: 'Annual Exam' },
+  {value: 'set', label: 'Set'}
 ]
 
 const assessLabel = { midterm_exam: 'Mid-Term Exam', terminal_exam: 'Terminal Exam', annual_exam: 'Annual Exam' }
