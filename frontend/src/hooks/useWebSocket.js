@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 
+// Vite automatically flags import.meta.env.PROD as true when building for Vercel
+const isProduction = import.meta.env.PROD
+
 export function useLiveResults(assessmentId) {
   const [data, setData]           = useState(null)
   const [isConnected, setIsConnected] = useState(false)
@@ -9,7 +12,12 @@ export function useLiveResults(assessmentId) {
 
   const connect = useCallback(() => {
     if (!assessmentId) return
-    const wsUrl = `ws://${window.location.hostname}:8000/api/v1/results/live/${assessmentId}`
+
+    // Dynamically choose secure WSS for Vercel, or local WS for dev
+    const wsUrl = isProduction
+      ? `wss://scholanexusapi.vercel.app/api/v1/results/live/${assessmentId}`
+      : `ws://localhost:8000/api/v1/results/live/${assessmentId}`
+
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws
 
