@@ -8,10 +8,7 @@ from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
-from app.core.database import engine, Base
 
-# Create all tables
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="ScholaNexus API",
