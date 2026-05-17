@@ -9,7 +9,9 @@ export function useLiveResults(assessmentId) {
 
   const connect = useCallback(() => {
     if (!assessmentId) return
-    const wsUrl = `ws://${window.location.hostname}:8000/api/v1/results/live/${assessmentId}`
+    const wsUrl = import.meta.env.PROD
+      ? `wss://scholanexusapi.vercel.app/api/v1/results/live/${assessmentId}`
+      : `ws://${window.location.hostname}:8000/api/v1/results/live/${assessmentId}`
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws
 
