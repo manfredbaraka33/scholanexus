@@ -13,6 +13,7 @@ const ASSESSMENT_TYPES = [
   { value: 'midterm_exam',   label: 'Mid-Term Exam',   icon: '🗓', desc: 'Mid-term examination' },
   { value: 'terminal_exam',  label: 'Terminal Exam',   icon: '📋', desc: 'End of term examination' },
   { value: 'annual_exam',    label: 'Annual Exam',     icon: '🎓', desc: 'Annual final examination' },
+  { value: 'set',    label: 'Set Exam',     icon: '🪓', desc: 'Set examination' },
 ]
 
 function AssessmentModal({ open, onClose, assignment, assessments }) {
