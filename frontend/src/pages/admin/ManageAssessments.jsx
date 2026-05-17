@@ -11,10 +11,10 @@ const ASSESSMENT_TYPES = [
   { value: 'midterm_exam',  label: 'Mid-Term Exam' },
   { value: 'terminal_exam', label: 'Terminal Exam' },
   { value: 'annual_exam',   label: 'Annual Exam' },
-  {value: 'set', label: 'Set'}
+  {value: 'set', label: 'Set Exam'}
 ]
 
-const assessLabel = { midterm_exam: 'Mid-Term Exam', terminal_exam: 'Terminal Exam', annual_exam: 'Annual Exam' }
+const assessLabel = { midterm_exam: 'Mid-Term Exam', terminal_exam: 'Terminal Exam', annual_exam: 'Annual Exam', set: 'Set Exam' }
 
 export default function ManageAssessments() {
   const qc = useQueryClient()
