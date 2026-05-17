@@ -9,6 +9,7 @@ class AssessmentType(str, enum.Enum):
     midterm_exam = "midterm_exam"
     terminal_exam = "terminal_exam"
     annual_exam = "annual_exam"
+    set = "set"
 
 
 class Assessment(Base):
