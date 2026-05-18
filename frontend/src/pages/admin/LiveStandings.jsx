@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import AppLayout from '../../components/layout/Navbar'
 import Spinner from '../../components/ui/Spinner'
 import { DivisionBadge } from '../../components/ui/Badge'
@@ -10,6 +10,9 @@ import toast from 'react-hot-toast'
 
 export default function LiveStandings() {
   const [assessmentId, setAssessmentId] = useState('')
+  const [editingCell, setEditingCell] = useState(null) // { studentId, subjectId, value }
+  const [overriding, setOverriding] = useState(false)
+  const cancelEditRef = useRef(false)
   const queryClient = useQueryClient()
 
   const { data: assessments = [] } = useQuery({
@@ -27,6 +30,35 @@ export default function LiveStandings() {
   const results = liveData ?? standingsData
 
   const assessLabel = { midterm_exam: 'Mid-Term Exam', terminal_exam: 'Terminal Exam', annual_exam: 'Annual Exam' }
+  const normalizeMarks = (value) => (value === '' ? null : Math.max(0, Math.min(100, Number(value))))
+  const submitOverride = (studentId, subjectId, value) => {
+    overrideMutation.mutate({
+      assessment_id: Number(assessmentId),
+      subject_id: subjectId,
+      student_id: studentId,
+      marks: normalizeMarks(value),
+    })
+  }
+  const submitOverrideIfChanged = (studentId, subjectId, value, currentMarks) => {
+    const nextMarks = normalizeMarks(value)
+    const previousMarks = currentMarks == null ? null : Number(currentMarks)
+    if (nextMarks === previousMarks) {
+      setEditingCell(null)
+      return
+    }
+    submitOverride(studentId, subjectId, value)
+  }
+  const overrideMutation = useMutation({
+    mutationFn: (payload) => api.post('/admin/scores/override', payload).then(r => r.data),
+    onMutate: () => setOverriding(true),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['standings', assessmentId] })
+      toast.success('Mark updated!')
+      setEditingCell(null)
+    },
+    onError: () => toast.error('Failed to update mark'),
+    onSettled: () => setOverriding(false),
+  })
 
   // Build ordered subject list from the first student's scores_by_subject (values contain code/name)
   const subjectCols = results?.students?.[0]
@@ -109,8 +141,8 @@ export default function LiveStandings() {
         if (gDiff !== 0) return gDiff
         const posDiff = (a.position ?? 9999) - (b.position ?? 9999)
         if (posDiff !== 0) return posDiff
-        const la = `${a.student.last_name} ${a.student.first_name}`.toLowerCase()
-        const lb = `${b.student.last_name} ${b.student.first_name}`.toLowerCase()
+        const la = `${a.student.first_name} ${a.student.middle_name ?? ''} ${a.student.last_name}`.toLowerCase().trim()
+        const lb = `${b.student.first_name} ${b.student.middle_name ?? ''} ${b.student.last_name}`.toLowerCase().trim()
         return la.localeCompare(lb)
       })
     : []
@@ -164,6 +196,7 @@ export default function LiveStandings() {
               <option key={a.id} value={a.id}>{assessLabel[a.name] ?? a.name} — {a.class_name} ({a.academic_year})</option>
             ))}
           </select>
+          <p className="text-xs text-slate-400 mt-1">💡 Click any mark cell in the table to edit it (admin override).</p>
         </div>
 
         {!assessmentId && (
@@ -225,8 +258,45 @@ export default function LiveStandings() {
                         {subjectCols.map(s => {
                           const sc = row.scores_by_subject?.[s.subject_id]
                           return (
-                            <td key={s.subject_id} className="px-3 py-2.5 text-slate-500 text-center font-mono">
-                              {sc?.marks != null ? sc.marks : <span className="text-slate-500">—</span>}
+                            <td
+                              key={s.subject_id}
+                              className="px-3 py-2.5 text-slate-500 text-center font-mono group relative cursor-pointer hover:bg-yellow-50"
+                              title="Click to edit mark"
+                              onClick={() => setEditingCell({ studentId: row.student.id, subjectId: s.subject_id, value: sc?.marks ?? '' })}
+                            >
+                              {editingCell?.studentId === row.student.id && editingCell?.subjectId === s.subject_id ? (
+                                <input
+                                  autoFocus
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  className="w-16 text-center border border-blue-400 rounded px-1 py-0.5 text-sm focus:outline-none"
+                                  value={editingCell.value}
+                                  onChange={e => setEditingCell(prev => ({ ...prev, value: e.target.value }))}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault()
+                                      submitOverrideIfChanged(row.student.id, s.subject_id, editingCell.value, sc?.marks)
+                                    }
+                                    if (e.key === 'Escape') {
+                                      cancelEditRef.current = true
+                                      setEditingCell(null)
+                                    }
+                                  }}
+                                  onBlur={() => {
+                                    if (cancelEditRef.current || overriding) {
+                                      cancelEditRef.current = false
+                                      return
+                                    }
+                                    submitOverrideIfChanged(row.student.id, s.subject_id, editingCell.value, sc?.marks)
+                                  }}
+                                  onClick={e => e.stopPropagation()}
+                                />
+                              ) : (
+                                <span className="group-hover:underline group-hover:text-blue-600">
+                                  {sc?.marks != null ? sc.marks : <span className="text-slate-300">—</span>}
+                                </span>
+                              )}
                             </td>
                           )
                         })}
