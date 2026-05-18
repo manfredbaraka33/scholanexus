@@ -14,7 +14,7 @@ export default function ScoreEntryModal({ open, onClose, student, marks, onChang
   }
 
   const name = student
-    ? `${student.last_name}, ${student.first_name}${student.middle_name ? ' ' + student.middle_name : ''}`
+    ? `${student.first_name, ${student.last_name}${student.middle_name ? ' ' + student.middle_name : ''}`
     : ''
 
   return (
