@@ -225,7 +225,7 @@ export default function ScoreSheet() {
                     const m = scoresMap[s.id]
                     const grade  = marksToGrade(m)
                     const points = grade ? gradeToPoints(grade) : null
-                    const fullName = `${s.last_name}, ${s.first_name}${s.middle_name ? ' ' + s.middle_name : ''}`
+                    const fullName = `${student.first_name, ${s.last_name}${s.middle_name ? ' ' + s.middle_name : ''}`
                     return (
                       <tr key={s.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
                         <td className="px-4 py-2 text-slate-500">{idx + 1}</td>
