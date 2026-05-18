@@ -28,6 +28,11 @@ export default function ManageStudents() {
     return nameA.localeCompare(nameB)
   })
 
+  // Derived counts (UI-only, computed from sortedStudents)
+  const totalCount  = sortedStudents.length
+  const femaleCount = sortedStudents.filter(s => s.gender === 'F').length
+  const maleCount   = sortedStudents.filter(s => s.gender === 'M').length
+
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm()
 
   const saveMutation = useMutation({
@@ -99,6 +104,26 @@ export default function ManageStudents() {
           </select>
         </div>
 
+        {/* Summary bar — shown only when there are students */}
+        {!isLoading && totalCount > 0 && (
+          <div className="flex flex-wrap items-center gap-3 mb-3 px-1">
+            <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+              👥 Total: <span className="text-slate-900">{totalCount}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 bg-pink-50 text-pink-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+              ♀ Girls: <span>{femaleCount}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+              ♂ Boys: <span>{maleCount}</span>
+            </span>
+            {classFilter && (
+              <span className="text-xs text-slate-400 italic">
+                — filtered by class
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="card p-0 overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-16 gap-3 text-slate-500"><Spinner />Loading…</div>
@@ -108,6 +133,7 @@ export default function ManageStudents() {
             <table className="w-full text-sm">
               <thead className="table-head">
                 <tr>
+                  <th className="px-4 py-3 text-left text-slate-400 font-medium w-10">#</th>
                   <th className="px-4 py-3 text-left">Adm #</th>
                   <th className="px-4 py-3 text-left">Name</th>
                   <th className="px-4 py-3 text-center">Gender</th>
@@ -118,6 +144,7 @@ export default function ManageStudents() {
               <tbody>
                 {sortedStudents.map((s, i) => (
                   <tr key={s.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                    <td className="px-4 py-2.5 text-xs text-slate-400 tabular-nums">{i + 1}</td>
                     <td className="px-4 py-2.5 font-mono text-xs text-slate-500">{s.admission_number}</td>
                     <td className="px-4 py-2.5 font-medium text-slate-800">
                       {s.first_name}{s.middle_name ? ' ' + s.middle_name : ''} {s.last_name}
