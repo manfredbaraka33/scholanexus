@@ -19,6 +19,14 @@ export default function ManageStudents() {
     queryKey: ['admin-students', classFilter],
     queryFn: () => api.get(`/admin/students${classFilter ? `?class_id=${classFilter}` : ''}`).then(r => r.data)
   })
+  const sortedStudents = [...students].sort((a, b) => {
+    const genderRank = (gender) => (gender === 'F' ? 0 : 1)
+    const gDiff = genderRank(a.gender) - genderRank(b.gender)
+    if (gDiff !== 0) return gDiff
+    const nameA = `${a.first_name ?? ''} ${a.middle_name ?? ''} ${a.last_name ?? ''}`.toLowerCase().trim()
+    const nameB = `${b.first_name ?? ''} ${b.middle_name ?? ''} ${b.last_name ?? ''}`.toLowerCase().trim()
+    return nameA.localeCompare(nameB)
+  })
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm()
 
@@ -108,11 +116,11 @@ export default function ManageStudents() {
                 </tr>
               </thead>
               <tbody>
-                {students.map((s, i) => (
+                {sortedStudents.map((s, i) => (
                   <tr key={s.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
                     <td className="px-4 py-2.5 font-mono text-xs text-slate-500">{s.admission_number}</td>
                     <td className="px-4 py-2.5 font-medium text-slate-800">
-                      {s.last_name}, {s.first_name}{s.middle_name ? ' ' + s.middle_name : ''}
+                      {s.first_name}{s.middle_name ? ' ' + s.middle_name : ''} {s.last_name}
                     </td>
                     <td className="px-4 py-2.5 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${s.gender === 'M' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}`}>{s.gender}</span>

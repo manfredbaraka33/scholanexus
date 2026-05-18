@@ -14,6 +14,13 @@ class ScoreSaveRequest(BaseModel):
     scores: List[ScoreItem]
 
 
+class AdminScoreOverrideRequest(BaseModel):
+    assessment_id: int
+    subject_id: int
+    student_id: int
+    marks: Optional[float] = None
+
+
 class ScoreResponse(BaseModel):
     id: int
     student_id: int

@@ -1,7 +1,7 @@
 import csv
 import io
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -13,6 +13,7 @@ from app.models.class_ import Class_
 from app.models.student import Student
 from app.models.subject import Subject, TeacherSubjectClass
 from app.models.assessment import Assessment
+from app.models.score import Score
 from app.schemas.user import UserCreate, UserResponse
 from app.schemas.student import StudentCreate, StudentResponse
 from app.schemas.subject import (
@@ -21,6 +22,8 @@ from app.schemas.subject import (
     TeacherSubjectClassCreate, TeacherSubjectClassResponse,
 )
 from app.schemas.assessment import AssessmentCreate, AssessmentResponse
+from app.schemas.score import AdminScoreOverrideRequest, ScoreResponse
+from app.utils.necta import marks_to_grade, grade_to_points
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -424,6 +427,58 @@ def toggle_publish_assessment(
     db.commit()
     db.refresh(assessment)
     return {"id": assessment.id, "is_published": assessment.is_published}
+
+
+@router.post("/scores/override", response_model=ScoreResponse)
+async def admin_override_score(
+    data: AdminScoreOverrideRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    """Admin-only: override a submitted/locked score. Triggers live broadcast."""
+    score = db.query(Score).filter(
+        Score.assessment_id == data.assessment_id,
+        Score.subject_id == data.subject_id,
+        Score.student_id == data.student_id,
+    ).first()
+
+    marks = None if data.marks is None else max(0.0, min(100.0, float(data.marks)))
+    grade = marks_to_grade(marks) if marks is not None else None
+    points = grade_to_points(grade) if grade is not None else None
+
+    if score:
+        score.marks = marks
+        score.grade = grade
+        score.points = points
+    else:
+        score = Score(
+            student_id=data.student_id,
+            subject_id=data.subject_id,
+            assessment_id=data.assessment_id,
+            marks=marks,
+            grade=grade,
+            points=points,
+            is_submitted=True,
+            submitted_at=None,
+        )
+        db.add(score)
+
+    db.commit()
+    db.refresh(score)
+
+    background_tasks.add_task(_admin_broadcast, data.assessment_id, db)
+    return score
+
+
+async def _admin_broadcast(assessment_id: int, db: Session):
+    try:
+        from app.services.results_engine import compile_class_results
+        from main import manager
+        results = await compile_class_results(assessment_id, db)
+        await manager.broadcast(assessment_id, results)
+    except Exception:
+        pass
 
 
 # ── Helpers ──────────────────────────────────────────────────────

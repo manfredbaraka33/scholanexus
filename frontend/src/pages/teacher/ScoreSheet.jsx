@@ -65,6 +65,14 @@ export default function ScoreSheet() {
     queryFn: () => api.get(`/teacher/students?class_id=${classId}`).then(r => r.data),
     enabled: !!classId
   })
+  const sortedStudents = [...students].sort((a, b) => {
+    const genderRank = (gender) => (gender === 'F' ? 0 : 1)
+    const gDiff = genderRank(a.gender) - genderRank(b.gender)
+    if (gDiff !== 0) return gDiff
+    const nameA = `${a.first_name ?? ''} ${a.middle_name ?? ''} ${a.last_name ?? ''}`.toLowerCase().trim()
+    const nameB = `${b.first_name ?? ''} ${b.middle_name ?? ''} ${b.last_name ?? ''}`.toLowerCase().trim()
+    return nameA.localeCompare(nameB)
+  })
 
   const { data: existingScores, isLoading: loadingE } = useQuery({
     queryKey: ['scores', assessmentId, subjectId],
@@ -221,11 +229,11 @@ export default function ScoreSheet() {
                   </tr>
                 </thead>
                 <tbody>
-                  {students.map((s, idx) => {
+                  {sortedStudents.map((s, idx) => {
                     const m = scoresMap[s.id]
                     const grade  = marksToGrade(m)
                     const points = grade ? gradeToPoints(grade) : null
-                    const fullName = `${s.first_name} ${s.last_name}${s.middle_name ? ' ' + s.middle_name : ''}`
+                    const fullName = `${s.first_name}${s.middle_name ? ' ' + s.middle_name : ''} ${s.last_name}`
                     return (
                       <tr key={s.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
                         <td className="px-4 py-2 text-slate-500">{idx + 1}</td>
@@ -245,7 +253,7 @@ export default function ScoreSheet() {
                           <input type="number" min="0" max="100" disabled={locked}
                             value={m ?? ''}
                             onChange={e => handleMarksChange(s.id, e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Tab') { e.preventDefault(); const next = students[idx+1]; if(next){ document.getElementById(`marks-${next.id}`)?.focus() } } }}
+                            onKeyDown={e => { if (e.key === 'Tab') { e.preventDefault(); const next = sortedStudents[idx+1]; if(next){ document.getElementById(`marks-${next.id}`)?.focus() } } }}
                             id={`marks-${s.id}`}
                             className={clsx('w-20 text-center text-slate-700 border rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500',
                               locked ? 'bg-slate-100 text-slate-700 cursor-not-allowed' : 'border-slate-200')}
@@ -358,8 +366,8 @@ export default function ScoreSheet() {
           marks={scoresMap[modalStudent.id]}
           onChange={v => handleMarksChange(modalStudent.id, v)}
           onSaveNext={() => {
-            const idx = students.findIndex(s => s.id === modalStudent.id)
-            if (idx < students.length - 1) setModalStudent(students[idx + 1])
+            const idx = sortedStudents.findIndex(s => s.id === modalStudent.id)
+            if (idx < sortedStudents.length - 1) setModalStudent(sortedStudents[idx + 1])
             else setModalStudent(null)
           }}
         />
