@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import AppLayout from '../../components/layout/Navbar'
 import Spinner from '../../components/ui/Spinner'
@@ -12,6 +12,7 @@ export default function LiveStandings() {
   const [assessmentId, setAssessmentId] = useState('')
   const [editingCell, setEditingCell] = useState(null) // { studentId, subjectId, value }
   const [overriding, setOverriding] = useState(false)
+  const cancelEditRef = useRef(false)
   const queryClient = useQueryClient()
 
   const { data: assessments = [] } = useQuery({
@@ -29,6 +30,24 @@ export default function LiveStandings() {
   const results = liveData ?? standingsData
 
   const assessLabel = { midterm_exam: 'Mid-Term Exam', terminal_exam: 'Terminal Exam', annual_exam: 'Annual Exam' }
+  const normalizeMarks = (value) => (value === '' ? null : Math.max(0, Math.min(100, Number(value))))
+  const submitOverride = (studentId, subjectId, value) => {
+    overrideMutation.mutate({
+      assessment_id: Number(assessmentId),
+      subject_id: subjectId,
+      student_id: studentId,
+      marks: normalizeMarks(value),
+    })
+  }
+  const submitOverrideIfChanged = (studentId, subjectId, value, currentMarks) => {
+    const nextMarks = normalizeMarks(value)
+    const previousMarks = currentMarks == null ? null : Number(currentMarks)
+    if (nextMarks === previousMarks) {
+      setEditingCell(null)
+      return
+    }
+    submitOverride(studentId, subjectId, value)
+  }
   const overrideMutation = useMutation({
     mutationFn: (payload) => api.post('/admin/scores/override', payload).then(r => r.data),
     onMutate: () => setOverriding(true),
@@ -257,15 +276,19 @@ export default function LiveStandings() {
                                   onKeyDown={e => {
                                     if (e.key === 'Enter') {
                                       e.preventDefault()
-                                      const marks = editingCell.value === '' ? null : Math.max(0, Math.min(100, Number(editingCell.value)))
-                                      overrideMutation.mutate({ assessment_id: Number(assessmentId), subject_id: s.subject_id, student_id: row.student.id, marks })
+                                      submitOverrideIfChanged(row.student.id, s.subject_id, editingCell.value, sc?.marks)
                                     }
-                                    if (e.key === 'Escape') setEditingCell(null)
+                                    if (e.key === 'Escape') {
+                                      cancelEditRef.current = true
+                                      setEditingCell(null)
+                                    }
                                   }}
                                   onBlur={() => {
-                                    if (overriding) return
-                                    const marks = editingCell.value === '' ? null : Math.max(0, Math.min(100, Number(editingCell.value)))
-                                    overrideMutation.mutate({ assessment_id: Number(assessmentId), subject_id: s.subject_id, student_id: row.student.id, marks })
+                                    if (cancelEditRef.current || overriding) {
+                                      cancelEditRef.current = false
+                                      return
+                                    }
+                                    submitOverrideIfChanged(row.student.id, s.subject_id, editingCell.value, sc?.marks)
                                   }}
                                   onClick={e => e.stopPropagation()}
                                 />

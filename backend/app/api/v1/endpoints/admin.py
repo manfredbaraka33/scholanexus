@@ -1,5 +1,6 @@
 import csv
 import io
+import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.responses import StreamingResponse
@@ -26,6 +27,7 @@ from app.schemas.score import AdminScoreOverrideRequest, ScoreResponse
 from app.utils.necta import marks_to_grade, grade_to_points
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+logger = logging.getLogger(__name__)
 
 
 # ── Classes ──────────────────────────────────────────────────────
@@ -478,7 +480,7 @@ async def _admin_broadcast(assessment_id: int, db: Session):
         results = await compile_class_results(assessment_id, db)
         await manager.broadcast(assessment_id, results)
     except Exception:
-        pass
+        logger.exception("Failed to broadcast admin score override for assessment_id=%s", assessment_id)
 
 
 # ── Helpers ──────────────────────────────────────────────────────
