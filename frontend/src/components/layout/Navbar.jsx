@@ -30,7 +30,7 @@ export default function AppLayout({ children }) {
             : <MoonIcon className="w-5 h-5" />}
         </button>
       </div>
-      <main className={`flex-1 px-4 md:px-8 pb-4 md:pb-8 pt-16 transition-all duration-200 ${collapsed ? 'md:ml-16' : 'md:ml-64'}`}>
+      <main className={`flex-1 min-w-0 overflow-x-hidden px-4 md:px-8 pb-4 md:pb-8 pt-16 transition-all duration-200 ${collapsed ? 'md:ml-16' : 'md:ml-64'}`}>
         {children}
       </main>
     </div>
