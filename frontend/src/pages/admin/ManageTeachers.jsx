@@ -129,7 +129,7 @@ export default function ManageTeachers() {
               <div>No teachers yet. Add one above.</div>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <table className="min-w-full text-sm">
               <thead className="table-head">
                 <tr>
                   <th className="px-4 py-3 text-left">Name</th>
