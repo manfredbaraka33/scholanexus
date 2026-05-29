@@ -461,7 +461,10 @@ async def override_score(
     score.grade = marks_to_grade(data.marks) if data.marks is not None else None
     score.points = grade_to_points(score.grade) if score.grade else 0
     
-    db.commit()
+    # FORCE THE UPDATE
+    db.add(score)      # Explicitly attach/add to session
+    db.flush()         # Force the SQL command to be sent to DB
+    db.commit()        # Persist the transaction
     db.refresh(score)
     
     # 4. Trigger the live background sync update
