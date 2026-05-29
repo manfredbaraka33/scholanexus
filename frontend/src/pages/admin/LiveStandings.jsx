@@ -279,13 +279,9 @@ export default function LiveStandings() {
                                       value={editingCell.value}
                                       onChange={e => setEditingCell(prev => ({ ...prev, value: e.target.value }))}
                                       onKeyDown={e => {
-                                        if (e.key === 'Enter') {
-                                          updateScoreMutation.mutate({ 
-                                            studentId: editingCell.studentId, // ✅ Set explicitly from state
-                                            subjectId: editingCell.subjectId, // ✅ Set explicitly from state
-                                            assessmentId: assessmentId,       // ✅ Clean global file state
-                                            newMarks: editingCell.value 
-                                          })
+                                       if (e.key === 'Enter') {
+                                            submitOverride(editingCell.studentId, editingCell.subjectId, editingCell.value);
+                                          }
                                         }
                                         if (e.key === 'Escape') setEditingCell(null)
                                       }}
@@ -293,15 +289,10 @@ export default function LiveStandings() {
                                     
                                     <button
                                       className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow-sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        updateScoreMutation.mutate({ 
-                                          studentId: editingCell.studentId, // ✅ Set explicitly from state
-                                          subjectId: editingCell.subjectId, // ✅ Set explicitly from state
-                                          assessmentId: assessmentId,       // ✅ Clean global file state
-                                          newMarks: editingCell.value 
-                                        })
-                                      }}
+                                     onClick={(e) => {
+                                          e.stopPropagation();
+                                          submitOverride(editingCell.studentId, editingCell.subjectId, editingCell.value);
+                                        }}
                                       disabled={overriding}
                                     >
                                       {overriding ? '...' : 'Save'}
