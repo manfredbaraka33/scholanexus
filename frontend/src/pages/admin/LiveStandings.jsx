@@ -310,6 +310,7 @@ export default function LiveStandings() {
                                       className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow-sm"
                                       onClick={(e) => {
                                         e.stopPropagation() // Prevents triggering table row clicks
+                                        console.log("Current score object keys:", sc);
                                         updateScoreMutation.mutate({ scoreId: sc.id, newMarks: editingCell.value })
                                       }}
                                       disabled={overriding}
