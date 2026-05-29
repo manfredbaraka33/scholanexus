@@ -435,54 +435,88 @@ def toggle_publish_assessment(
 
 
 
-@router.post("/scores/override", response_model=ScoreResponse)
-async def admin_override_score(
-    data: AdminScoreOverrideRequest,
+# @router.post("/scores/override", response_model=ScoreResponse)
+# async def admin_override_score(
+#     data: AdminScoreOverrideRequest,
+#     background_tasks: BackgroundTasks,
+#     db: Session = Depends(get_db),
+#     _=Depends(require_admin),
+# ):
+#     # 1. Add strict explicit logging or casting to prevent the Else-Trap
+#     score = db.query(Score).filter(
+#         Score.assessment_id == int(data.assessment_id),
+#         Score.subject_id == int(data.subject_id),
+#         Score.student_id == int(data.student_id),
+#     ).first()
+
+#     marks = None if data.marks is None else max(0.0, min(100.0, float(data.marks)))
+#     grade = marks_to_grade(marks) if marks is not None else None
+#     points = grade_to_points(grade) if grade is not None else None
+
+#     if score:
+#         score.marks = marks
+#         score.grade = grade
+#         score.points = points
+#     else:
+#         score = Score(
+#             student_id=data.student_id,
+#             subject_id=data.subject_id,
+#             assessment_id=data.assessment_id,
+#             marks=marks,
+#             grade=grade,
+#             points=points,
+#             is_submitted=True,
+#         )
+#         db.add(score)
+
+#     try:
+#         db.commit()
+#         db.refresh(score)
+#     except Exception as e:
+#         db.rollback()
+#         raise HTTPException(status_code=500, detail=f"Database commit failed: {str(e)}")
+
+#     # 2. DO NOT pass the request's 'db' session into a background task.
+#     # Pass only the IDs, and let the background task spawn its own temporary session.
+#     background_tasks.add_task(_admin_broadcast, data.assessment_id) 
+    
+#     return score
+
+@router.post("/admin/scores/override", response_model=ScoreResponse)
+async def override_score(
+    data: ScoreOverridePayload, # This expects student_id, subject_id, assessment_id, marks
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    _=Depends(require_admin),
+    _=Depends(require_teacher)
 ):
-    # 1. Add strict explicit logging or casting to prevent the Else-Trap
+    # 1. Look for the existing row using the composite keys
     score = db.query(Score).filter(
-        Score.assessment_id == int(data.assessment_id),
-        Score.subject_id == int(data.subject_id),
-        Score.student_id == int(data.student_id),
+        Score.student_id == data.student_id,
+        Score.subject_id == data.subject_id,
+        Score.assessment_id == data.assessment_id
     ).first()
-
-    marks = None if data.marks is None else max(0.0, min(100.0, float(data.marks)))
-    grade = marks_to_grade(marks) if marks is not None else None
-    points = grade_to_points(grade) if grade is not None else None
-
-    if score:
-        score.marks = marks
-        score.grade = grade
-        score.points = points
-    else:
+    
+    # 2. If it is a brand new mark, create the row
+    if not score:
         score = Score(
             student_id=data.student_id,
             subject_id=data.subject_id,
-            assessment_id=data.assessment_id,
-            marks=marks,
-            grade=grade,
-            points=points,
-            is_submitted=True,
+            assessment_id=data.assessment_id
         )
         db.add(score)
-
-    try:
-        db.commit()
-        db.refresh(score)
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Database commit failed: {str(e)}")
-
-    # 2. DO NOT pass the request's 'db' session into a background task.
-    # Pass only the IDs, and let the background task spawn its own temporary session.
-    background_tasks.add_task(_admin_broadcast, data.assessment_id) 
+        
+    # 3. Apply the marks and run structural conversions
+    score.marks = data.marks
+    score.grade = marks_to_grade(data.marks) if data.marks is not None else None
+    score.points = grade_to_points(score.grade) if score.grade else 0
+    
+    db.commit()
+    db.refresh(score)
+    
+    # 4. Trigger the live background sync update
+    background_tasks.add_task(_admin_broadcast, score.assessment_id)
     
     return score
-
-
 
 async def _admin_broadcast(assessment_id: int):
     try:
