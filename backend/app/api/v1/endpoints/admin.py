@@ -474,17 +474,24 @@ async def override_score(
 
 async def _admin_broadcast(assessment_id: int):
     try:
-        from app.core.database import SessionLocal  # ✅ Precise import path
+        from app.core.database import SessionLocal 
         from app.services.results_engine import compile_class_results
         from main import manager
         
-        # Open a fresh, isolated database connection for this background worker
+        print(f"DEBUG: Starting broadcast for assessment {assessment_id}") # ADD THIS
+        
         with SessionLocal() as session:
             results = await compile_class_results(assessment_id, session)
+            print(f"DEBUG: Results compiled. Broadcasting...") # ADD THIS
             await manager.broadcast(assessment_id, results)
+            print(f"DEBUG: Broadcast successful.") # ADD THIS
             
-    except Exception:
+    except Exception as e:
+        # Change this to print the actual error
+        print(f"CRITICAL ERROR in _admin_broadcast: {str(e)}") 
         logger.exception("Failed to broadcast admin score override for assessment_id=%s", assessment_id)
+
+
 
 # ── Helpers ──────────────────────────────────────────────────────
 
