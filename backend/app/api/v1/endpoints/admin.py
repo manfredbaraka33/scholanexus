@@ -523,11 +523,11 @@ class ScorePatchRequest(BaseModel):
     marks: float = Field(..., ge=0.0, le=100.0)
 
 
-@router.patch("/scores/update-regular", response_model=ScoreResponse)
+@router.patch("/update-regular-student-score", response_model=ScoreResponse)
 async def update_regular_score(
-    student_id: int,       # 💡 Explicitly enforce strict integer conversion
-    subject_id: int,       # 💡 Explicitly enforce strict integer conversion
-    assessment_id: int,    # 💡 Explicitly enforce strict integer conversion
+    student_id: int,
+    subject_id: int,
+    assessment_id: int,
     data: ScorePatchRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
