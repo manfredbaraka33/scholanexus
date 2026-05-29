@@ -62,13 +62,9 @@ export default function LiveStandings() {
 
 
   const updateScoreMutation = useMutation({
-  // 💡 Accept an object with studentId, subjectId, and assessmentId
   mutationFn: ({ studentId, subjectId, assessmentId, newMarks }) => 
-    api.post(`/admin/scores/override`, { 
-      student_id: parseInt(studentId),
-      subject_id: parseInt(subjectId),
-      assessment_id: parseInt(assessmentId),
-      marks: parseFloat(newMarks) 
+    api.patch(`/scores/update-regular?student_id=${studentId}&subject_id=${subjectId}&assessment_id=${assessmentId}`, { 
+      marks: newMarks === '' ? null : parseFloat(newMarks) 
     }).then(r => r.data),
   
   onMutate: () => setOverriding(true),
@@ -83,8 +79,6 @@ export default function LiveStandings() {
   },
   onSettled: () => setOverriding(false),
 })
-
-  
   
   // Build ordered subject list from the first student's scores_by_subject (values contain code/name)
   const subjectCols = results?.students?.[0]
