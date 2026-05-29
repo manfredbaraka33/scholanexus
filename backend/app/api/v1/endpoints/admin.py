@@ -441,6 +441,7 @@ async def override_score(
     db: Session = Depends(get_db),
     _=Depends(require_teacher)
 ):
+    print(f"DEBUG: Data received: {data.model_dump()}")
     # 1. Look for the existing row using the composite keys
     score = db.query(Score).filter(
         Score.student_id == data.student_id,
