@@ -525,15 +525,15 @@ class ScorePatchRequest(BaseModel):
 
 @router.patch("/scores/update-regular", response_model=ScoreResponse)
 async def update_regular_score(
-    student_id: int,
-    subject_id: int,
-    assessment_id: int,
+    student_id: int,       # 💡 Explicitly enforce strict integer conversion
+    subject_id: int,       # 💡 Explicitly enforce strict integer conversion
+    assessment_id: int,    # 💡 Explicitly enforce strict integer conversion
     data: ScorePatchRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     _=Depends(require_teacher)
 ):
-    # 1. Locate the precise record using the composite keys known by the frontend
+    # The database will now query matching Integer against Integer flawlessly
     score = db.query(Score).filter(
         Score.student_id == student_id,
         Score.subject_id == subject_id,
@@ -541,18 +541,14 @@ async def update_regular_score(
     ).first()
     
     if not score:
-        raise HTTPException(status_code=404, detail="Score record not found")
+        raise HTTPException(status_code=404, detail="Score record truly not found")
         
-    # 2. Re-calculate grades instantly on the fly
     score.marks = data.marks
-    score.grade = marks_to_grade(data.marks)
-    score.points = grade_to_points(score.grade)
+    score.grade = marks_to_grade(data.marks) if data.marks is not None else None
+    score.points = grade_to_points(score.grade) if score.grade else 0
     
     db.commit()
     db.refresh(score)
-    
-    # 3. Trigger the lightweight background broadcast safely
     background_tasks.add_task(_admin_broadcast, score.assessment_id)
-    
     return score
 
