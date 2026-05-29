@@ -48,19 +48,6 @@ export default function LiveStandings() {
     }
     submitOverride(studentId, subjectId, value)
   }
-  const overrideMutation = useMutation({
-    mutationFn: (payload) => api.post('/admin/scores/override', payload).then(r => r.data),
-    onMutate: () => setOverriding(true),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['standings', assessmentId] })
-      toast.success('Mark updated!')
-      setEditingCell(null)
-    },
-    onError: () => toast.error('Failed to update mark'),
-    onSettled: () => setOverriding(false),
-  })
-
-
 
   const overrideMutation = useMutation({
     // We use the exact URL Vercel already knows and loves
