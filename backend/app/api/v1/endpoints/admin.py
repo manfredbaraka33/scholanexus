@@ -523,16 +523,23 @@ class ScorePatchRequest(BaseModel):
     marks: float = Field(..., ge=0.0, le=100.0)
 
 
-@router.patch("/scores/{score_id}", response_model=ScoreResponse)
+@router.patch("/scores/update-regular", response_model=ScoreResponse)
 async def update_regular_score(
-    score_id: int,
+    student_id: int,
+    subject_id: int,
+    assessment_id: int,
     data: ScorePatchRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    _=Depends(require_teacher)  # ✅ Using the valid dependency imported at your top line 11
+    _=Depends(require_teacher)
 ):
-    # 1. Locate the precise record instantly via its primary key
-    score = db.query(Score).filter(Score.id == score_id).first()
+    # 1. Locate the precise record using the composite keys known by the frontend
+    score = db.query(Score).filter(
+        Score.student_id == student_id,
+        Score.subject_id == subject_id,
+        Score.assessment_id == assessment_id
+    ).first()
+    
     if not score:
         raise HTTPException(status_code=404, detail="Score record not found")
         
