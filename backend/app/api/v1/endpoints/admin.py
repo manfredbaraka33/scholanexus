@@ -483,15 +483,18 @@ async def admin_override_score(
 
 
 
+from app.database import SessionLocal # 💡 Adjust this import path to match where your SessionLocal is defined
 
-
-
-async def _admin_broadcast(assessment_id: int, db: Session):
+async def _admin_broadcast(assessment_id: int): # 👈 Removed db parameter
     try:
         from app.services.results_engine import compile_class_results
         from main import manager
-        results = await compile_class_results(assessment_id, db)
-        await manager.broadcast(assessment_id, results)
+        
+        # Open a fresh, safe database session dedicated to this background thread
+        with SessionLocal() as session:
+            results = await compile_class_results(assessment_id, session)
+            await manager.broadcast(assessment_id, results)
+            
     except Exception:
         logger.exception("Failed to broadcast admin score override for assessment_id=%s", assessment_id)
 
