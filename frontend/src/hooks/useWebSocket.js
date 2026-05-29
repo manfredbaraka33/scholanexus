@@ -60,7 +60,7 @@
 
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import api from './api' // Adjust this path to match your file structure
+import api from '../api/axios'
 
 export function useLiveResults(assessmentId) {
   const [data, setData] = useState(null)
