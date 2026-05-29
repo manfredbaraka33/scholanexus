@@ -282,7 +282,7 @@ export default function LiveStandings() {
                                        if (e.key === 'Enter') {
                                             submitOverride(editingCell.studentId, editingCell.subjectId, editingCell.value);
                                           }
-                                        }
+                                        
                                         if (e.key === 'Escape') setEditingCell(null)
                                       }}
                                     />
