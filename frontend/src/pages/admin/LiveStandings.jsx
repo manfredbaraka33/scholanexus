@@ -61,24 +61,29 @@ export default function LiveStandings() {
   })
 
 
-  const updateScoreMutation = useMutation({
-  mutationFn: ({ studentId, subjectId, assessmentId, newMarks }) => 
-    api.patch(`/update-regular?student_id=${studentId}&subject_id=${subjectId}&assessment_id=${assessmentId}`, { 
-      marks: newMarks === '' ? null : parseFloat(newMarks) 
-    }).then(r => r.data),
+
+  const overrideMutation = useMutation({
+    // We use the exact URL Vercel already knows and loves
+    mutationFn: (payload) => api.post('/admin/scores/override', payload).then(r => r.data),
+    onMutate: () => setOverriding(true),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['standings', assessmentId] })
+      toast.success('Mark saved reliably!')
+      setEditingCell(null)
+    },
+    onError: () => toast.error('Failed to save mark'),
+    onSettled: () => setOverriding(false),
+  })
+
+  // Inside your table cell, your save button/enter key calls it like this:
+  overrideMutation.mutate({ 
+    student_id: Number(editingCell.studentId),
+    subject_id: Number(editingCell.subjectId),
+    assessment_id: Number(assessmentId), 
+    marks: normalizeMarks(editingCell.value)
+  })
+
   
-  onMutate: () => setOverriding(true),
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['standings', assessmentId] })
-    toast.success('Score updated successfully!')
-    setEditingCell(null)
-  },
-  onError: (err) => {
-    console.error(err)
-    toast.error('Failed to save edit')
-  },
-  onSettled: () => setOverriding(false),
-})
   
   // Build ordered subject list from the first student's scores_by_subject (values contain code/name)
   const subjectCols = results?.students?.[0]
