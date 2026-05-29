@@ -61,7 +61,6 @@
 
 
 
-
 import { useEffect, useRef, useState, useCallback } from 'react'
 
 // Vite automatically flags import.meta.env.PROD as true when building for Vercel
@@ -71,18 +70,19 @@ export function useLiveResults(assessmentId) {
   const [data, setData] = useState(null)
   const [isConnected, setIsConnected] = useState(false)
   const timeoutRef = useRef(null)
-  const isMounted = useRef(true) // Prevents state updates if component unmounts
+  const isMounted = useRef(true)
 
   const fetchResults = useCallback(async () => {
     if (!assessmentId) return
 
-    // Switched to HTTP/HTTPS instead of WS/WSS
+    // Using your standard, working REST API endpoint instead of the WebSocket one
     const baseUrl = isProduction
       ? `https://scholanexusapi.vercel.app/api/v1`
       : `http://localhost:8000/api/v1`
 
     try {
-      const response = await fetch(`${baseUrl}/results/live/${assessmentId}`)
+      // Changed the path to match your React Query endpoint
+      const response = await fetch(`${baseUrl}/results/standings?assessment_id=${assessmentId}`)
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -92,14 +92,14 @@ export function useLiveResults(assessmentId) {
       
       if (isMounted.current) {
         setData(jsonData)
-        setIsConnected(true) // Treat a successful fetch as "connected"
+        setIsConnected(true)
       }
     } catch (error) {
       if (isMounted.current) {
         setIsConnected(false)
       }
     } finally {
-      // Schedule the next poll in 5 seconds (5000ms), creating a "live" loop
+      // Refresh every 5 seconds
       if (isMounted.current) {
         timeoutRef.current = setTimeout(fetchResults, 5000)
       }
@@ -112,19 +112,15 @@ export function useLiveResults(assessmentId) {
     setIsConnected(false)
     clearTimeout(timeoutRef.current)
 
-    // Start the polling loop
     fetchResults()
 
-    // Cleanup when the hook unmounts or assessmentId changes
     return () => {
       isMounted.current = false
       clearTimeout(timeoutRef.current)
     }
   }, [fetchResults])
 
-  // Returns the exact same object structure your LiveStandings component expects
-  return { data, isConnected } 
+  return { data, isConnected }
 }
-
 
 
