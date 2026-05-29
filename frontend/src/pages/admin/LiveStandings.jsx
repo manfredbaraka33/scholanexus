@@ -31,14 +31,14 @@ export default function LiveStandings() {
 
   const assessLabel = { midterm_exam: 'Mid-Term Exam', terminal_exam: 'Terminal Exam', annual_exam: 'Annual Exam' }
   const normalizeMarks = (value) => (value === '' ? null : Math.max(0, Math.min(100, Number(value))))
-  // const submitOverride = (studentId, subjectId, value) => {
-  //   // overrideMutation.mutate({
-  //   //   assessment_id: Number(assessmentId),
-  //   //   subject_id: subjectId,
-  //   //   student_id: studentId,
-  //   //   marks: normalizeMarks(value),
-  //   // })
-  // }
+  const submitOverride = (studentId, subjectId, value) => {
+    overrideMutation.mutate({
+      assessment_id: Number(assessmentId),
+      subject_id: subjectId,
+      student_id: studentId,
+      marks: normalizeMarks(value),
+    })
+  }
   const submitOverrideIfChanged = (studentId, subjectId, value, currentMarks) => {
     const nextMarks = normalizeMarks(value)
     const previousMarks = currentMarks == null ? null : Number(currentMarks)
@@ -61,15 +61,6 @@ export default function LiveStandings() {
     onError: () => toast.error('Failed to save mark'),
     onSettled: () => setOverriding(false),
   })
-
-  // Inside your table cell, your save button/enter key calls it like this:
-  overrideMutation.mutate({ 
-    student_id: Number(editingCell.studentId),
-    subject_id: Number(editingCell.subjectId),
-    assessment_id: Number(assessmentId), 
-    marks: normalizeMarks(editingCell.value)
-  })
-
   
   
   // Build ordered subject list from the first student's scores_by_subject (values contain code/name)
