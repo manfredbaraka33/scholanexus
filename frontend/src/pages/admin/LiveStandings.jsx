@@ -301,6 +301,7 @@ export default function LiveStandings() {
                                         if (e.key === 'Enter') {
                                           updateScoreMutation.mutate({ scoreId: sc.id, newMarks: editingCell.value })
                                         }
+                                        console.log("Current score object keys:", sc);
                                         if (e.key === 'Escape') setEditingCell(null)
                                       }}
                                     />
