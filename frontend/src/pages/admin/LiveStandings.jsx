@@ -290,55 +290,53 @@ export default function LiveStandings() {
                               title="Click to edit mark"
                               onClick={() => setEditingCell({ studentId: row.student.id, subjectId: s.subject_id, value: sc?.marks ?? '' })}
                             >
-                              {editingCell?.studentId === row.student.id && editingCell?.subjectId === s.subject_id ? (
 
-                             <div className="flex items-center gap-1">
-                                  <input
-                                    autoFocus
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    className="w-16 text-center border border-blue-400 rounded px-1 py-0.5 text-sm focus:outline-none"
-                                    value={editingCell.value}
-                                    onChange={e => setEditingCell(prev => ({ ...prev, value: e.target.value }))}
-                                    onKeyDown={e => {
-                                      if (e.key === 'Enter') {
-                                        // 💡 Uses student_id, subject_id, and assessmentId instead of broken sc.id
+                              {editingCell?.studentId === row.student.id && editingCell?.subjectId === s.subject_id ? (
+                                  <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                    <input
+                                      autoFocus
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      className="w-16 text-center border border-blue-400 rounded px-1 py-0.5 text-sm focus:outline-none"
+                                      value={editingCell.value}
+                                      onChange={e => setEditingCell(prev => ({ ...prev, value: e.target.value }))}
+                                      onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                          updateScoreMutation.mutate({ 
+                                            studentId: editingCell.studentId, // ✅ Set explicitly from state
+                                            subjectId: editingCell.subjectId, // ✅ Set explicitly from state
+                                            assessmentId: assessmentId,       // ✅ Clean global file state
+                                            newMarks: editingCell.value 
+                                          })
+                                        }
+                                        if (e.key === 'Escape') setEditingCell(null)
+                                      }}
+                                    />
+                                    
+                                    <button
+                                      className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow-sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
                                         updateScoreMutation.mutate({ 
-                                          studentId: editingCell.student_id || sc.student_id || studentId, // Fallback chain to find your student context
-                                          subjectId: sc.subject_id, 
-                                          assessmentId: assessmentId, 
+                                          studentId: editingCell.studentId, // ✅ Set explicitly from state
+                                          subjectId: editingCell.subjectId, // ✅ Set explicitly from state
+                                          assessmentId: assessmentId,       // ✅ Clean global file state
                                           newMarks: editingCell.value 
                                         })
-                                      }
-                                      if (e.key === 'Escape') setEditingCell(null)
-                                    }}
-                                  />
-                                  
-                                  {/* 🚀 Here is your physical update button */}
-                                  <button
-                                    className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow-sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation() // Prevents triggering table row clicks
-                                      
-                                      // 💡 Clean mutation using the known composite keys
-                                      updateScoreMutation.mutate({ 
-                                        studentId: editingCell.student_id || sc.student_id || studentId,
-                                        subjectId: sc.subject_id, 
-                                        assessmentId: assessmentId, 
-                                        newMarks: editingCell.value 
-                                      })
-                                    }}
-                                    disabled={overriding}
-                                  >
-                                    {overriding ? '...' : 'Save'}
-                                  </button>
-                                </div>
-                                                                ) : (
-                                <span className="group-hover:underline group-hover:text-blue-600">
-                                  {sc?.marks != null ? sc.marks : <span className="text-slate-300">—</span>}
-                                </span>
-                              )}
+                                      }}
+                                      disabled={overriding}
+                                    >
+                                      {overriding ? '...' : 'Save'}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="group-hover:underline group-hover:text-blue-600">
+                                    {sc?.marks != null ? sc.marks : <span className="text-slate-300">—</span>}
+                                  </span>
+                                )}
+
+                              
                             </td>
                           )
                         })}
