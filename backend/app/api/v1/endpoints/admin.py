@@ -513,3 +513,41 @@ def _enrich_assignment(assignment: TeacherSubjectClass, db: Session) -> dict:
         "subject_code": subject.code if subject else "",
         "class_name": cls.name if cls else "",
     }
+
+
+
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.core.database import SessionLocal
+from app.models import Score
+from pydantic import BaseModel, Field
+
+class ScorePatchRequest(BaseModel):
+    marks: float = Field(..., ge=0.0, le=100.0)
+
+@router.patch("/scores/{score_id}", response_model=ScoreResponse)
+async def update_regular_score(
+    score_id: int,
+    data: ScorePatchRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user) # Normal authenticated teacher/staff
+):
+    # 1. Locate the precise record instantly via its primary key
+    score = db.query(Score).filter(Score.id == score_id).first()
+    if not score:
+        raise HTTPException(status_code=404, detail="Score record not found")
+        
+    # 2. Re-calculate grades instantly on the fly
+    score.marks = data.marks
+    score.grade = marks_to_grade(data.marks)
+    score.points = grade_to_points(score.grade)
+    
+    db.commit()
+    db.refresh(score)
+    
+    # 3. Trigger the lightweight background broadcast using our safe isolated session setup
+    background_tasks.add_task(_admin_broadcast, score.assessment_id)
+    
+    return score
