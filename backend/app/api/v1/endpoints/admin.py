@@ -463,15 +463,11 @@ async def override_score(
     score.grade = marks_to_grade(data.marks) if data.marks is not None else None
     score.points = grade_to_points(score.grade) if score.grade else 0
     
-    # --- THIS IS THE CRITICAL CHANGE ---
-    from sqlalchemy import inspect
-    
-    # Mark the object as "dirty" so SQLAlchemy knows to track it
-    flag_modified(score, "marks") 
-    
-    db.add(score)      
-    db.flush()         
-    db.commit()        
+    # FORCE THE UPDATE
+    # We use db.merge to ensure the object is correctly 
+    # tracked and marked for an UPDATE statement
+    db.merge(score) 
+    db.commit()
     db.refresh(score)
     # -----------------------------------
     
