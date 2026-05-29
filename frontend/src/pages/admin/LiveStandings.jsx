@@ -32,12 +32,12 @@ export default function LiveStandings() {
   const assessLabel = { midterm_exam: 'Mid-Term Exam', terminal_exam: 'Terminal Exam', annual_exam: 'Annual Exam' }
   const normalizeMarks = (value) => (value === '' ? null : Math.max(0, Math.min(100, Number(value))))
   const submitOverride = (studentId, subjectId, value) => {
-    overrideMutation.mutate({
-      assessment_id: Number(assessmentId),
-      subject_id: subjectId,
-      student_id: studentId,
-      marks: normalizeMarks(value),
-    })
+    // overrideMutation.mutate({
+    //   assessment_id: Number(assessmentId),
+    //   subject_id: subjectId,
+    //   student_id: studentId,
+    //   marks: normalizeMarks(value),
+    // })
   }
   const submitOverrideIfChanged = (studentId, subjectId, value, currentMarks) => {
     const nextMarks = normalizeMarks(value)
