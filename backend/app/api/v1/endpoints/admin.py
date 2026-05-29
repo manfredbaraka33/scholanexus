@@ -461,11 +461,17 @@ async def override_score(
     score.grade = marks_to_grade(data.marks) if data.marks is not None else None
     score.points = grade_to_points(score.grade) if score.grade else 0
     
-    # FORCE THE UPDATE
-    db.add(score)      # Explicitly attach/add to session
-    db.flush()         # Force the SQL command to be sent to DB
-    db.commit()        # Persist the transaction
+    # --- THIS IS THE CRITICAL CHANGE ---
+    from sqlalchemy import inspect
+    
+    # Mark the object as "dirty" so SQLAlchemy knows to track it
+    flag_modified(score, "marks") 
+    
+    db.add(score)      
+    db.flush()         
+    db.commit()        
     db.refresh(score)
+    # -----------------------------------
     
     # 4. Trigger the live background sync update
     background_tasks.add_task(_admin_broadcast, score.assessment_id)
