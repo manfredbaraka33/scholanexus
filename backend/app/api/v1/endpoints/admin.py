@@ -465,7 +465,7 @@ async def override_score(
     
     # 4. Flush and Commit
     db.flush()
-    db.commit()-----------------
+    db.commit()
     
     # 4. Trigger the live background sync update
     background_tasks.add_task(_admin_broadcast, score.assessment_id)
