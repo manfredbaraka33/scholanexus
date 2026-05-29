@@ -442,14 +442,39 @@ async def override_score(
     _=Depends(require_teacher)
 ):
     print(f"DEBUG: Data received: {data.model_dump()}")
-    # 1. Fetch the absolute latest record from the DB
+    # # 1. Fetch the absolute latest record from the DB
+    # score = db.query(Score).filter(
+    #     Score.student_id == data.student_id,
+    #     Score.subject_id == data.subject_id,
+    #     Score.assessment_id == data.assessment_id
+    # ).with_for_update().first() # <-- Added locking for safety
+    
+    # # 2. Create if not exists
+    # if not score:
+    #     score = Score(
+    #         student_id=data.student_id,
+    #         subject_id=data.subject_id,
+    #         assessment_id=data.assessment_id
+    #     )
+    #     db.add(score)
+        
+    # # 3. Apply changes directly
+    # score.marks = data.marks
+    # score.grade = marks_to_grade(data.marks) if data.marks is not None else None
+    # score.points = grade_to_points(score.grade) if score.grade else 0
+    
+    # # 4. Flush and Commit
+    # db.flush()
+    # db.commit()
+
+    # 1. Look for the record
     score = db.query(Score).filter(
         Score.student_id == data.student_id,
         Score.subject_id == data.subject_id,
         Score.assessment_id == data.assessment_id
-    ).with_for_update().first() # <-- Added locking for safety
+    ).first()
     
-    # 2. Create if not exists
+    # 2. If it doesn't exist, create it
     if not score:
         score = Score(
             student_id=data.student_id,
@@ -457,15 +482,19 @@ async def override_score(
             assessment_id=data.assessment_id
         )
         db.add(score)
-        
-    # 3. Apply changes directly
+        # Flush to generate the ID immediately
+        db.flush() 
+
+    # 3. Update the attributes
     score.marks = data.marks
     score.grade = marks_to_grade(data.marks) if data.marks is not None else None
     score.points = grade_to_points(score.grade) if score.grade else 0
-    
-    # 4. Flush and Commit
-    db.flush()
+    score.is_submitted = True # Ensure this is marked as True
+    score.submitted_at = datetime.utcnow()
+
+    # 4. Commit the changes
     db.commit()
+    db.refresh(score)
     
     # 4. Trigger the live background sync update
     background_tasks.add_task(_admin_broadcast, score.assessment_id)
