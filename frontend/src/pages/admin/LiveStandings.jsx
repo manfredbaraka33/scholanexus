@@ -62,26 +62,30 @@ export default function LiveStandings() {
 
 
   const updateScoreMutation = useMutation({
-  // Passes both the score record ID and the brand new numeric value
-  mutationFn: ({ scoreId, newMarks }) => 
-    api.patch(`/admin/scores/${scoreId}`, { marks: parseFloat(newMarks) }).then(r => r.data),
+  // 💡 Accept an object with studentId, subjectId, and assessmentId
+  mutationFn: ({ studentId, subjectId, assessmentId, newMarks }) => 
+    api.post(`/admin/scores/override`, { 
+      student_id: parseInt(studentId),
+      subject_id: parseInt(subjectId),
+      assessment_id: parseInt(assessmentId),
+      marks: parseFloat(newMarks) 
+    }).then(r => r.data),
   
   onMutate: () => setOverriding(true),
-  
   onSuccess: () => {
-    // Instantly refresh TanStack cache for this specific assessment
     queryClient.invalidateQueries({ queryKey: ['standings', assessmentId] })
     toast.success('Score updated successfully!')
     setEditingCell(null)
   },
-  
   onError: (err) => {
     console.error(err)
-    toast.error('Failed to save regular edit')
+    toast.error('Failed to save edit')
   },
   onSettled: () => setOverriding(false),
 })
 
+  
+  
   // Build ordered subject list from the first student's scores_by_subject (values contain code/name)
   const subjectCols = results?.students?.[0]
     ? Object.values(results.students[0].scores_by_subject ?? {})
@@ -288,37 +292,48 @@ export default function LiveStandings() {
                             >
                               {editingCell?.studentId === row.student.id && editingCell?.subjectId === s.subject_id ? (
 
-                              <div className="flex items-center gap-1">
-                                    <input
-                                      autoFocus
-                                      type="number"
-                                      min="0"
-                                      max="100"
-                                      className="w-16 text-center border border-blue-400 rounded px-1 py-0.5 text-sm focus:outline-none"
-                                      value={editingCell.value}
-                                      onChange={e => setEditingCell(prev => ({ ...prev, value: e.target.value }))}
-                                      onKeyDown={e => {
-                                        if (e.key === 'Enter') {
-                                          updateScoreMutation.mutate({ scoreId: sc.id, newMarks: editingCell.value })
-                                        }
-                                        console.log("Current score object keys:", sc);
-                                        if (e.key === 'Escape') setEditingCell(null)
-                                      }}
-                                    />
-                                    
-                                    {/* 🚀 Here is your physical update button */}
-                                    <button
-                                      className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow-sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation() // Prevents triggering table row clicks
-                                        console.log("Current score object keys:", sc);
-                                        updateScoreMutation.mutate({ scoreId: sc.id, newMarks: editingCell.value })
-                                      }}
-                                      disabled={overriding}
-                                    >
-                                      {overriding ? '...' : 'Save'}
-                                    </button>
-                                  </div>
+                             <div className="flex items-center gap-1">
+                                  <input
+                                    autoFocus
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    className="w-16 text-center border border-blue-400 rounded px-1 py-0.5 text-sm focus:outline-none"
+                                    value={editingCell.value}
+                                    onChange={e => setEditingCell(prev => ({ ...prev, value: e.target.value }))}
+                                    onKeyDown={e => {
+                                      if (e.key === 'Enter') {
+                                        // 💡 Uses student_id, subject_id, and assessmentId instead of broken sc.id
+                                        updateScoreMutation.mutate({ 
+                                          studentId: editingCell.student_id || sc.student_id || studentId, // Fallback chain to find your student context
+                                          subjectId: sc.subject_id, 
+                                          assessmentId: assessmentId, 
+                                          newMarks: editingCell.value 
+                                        })
+                                      }
+                                      if (e.key === 'Escape') setEditingCell(null)
+                                    }}
+                                  />
+                                  
+                                  {/* 🚀 Here is your physical update button */}
+                                  <button
+                                    className="bg-green-500 hover:bg-green-600 text-white text-xs px-2 py-1 rounded shadow-sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation() // Prevents triggering table row clicks
+                                      
+                                      // 💡 Clean mutation using the known composite keys
+                                      updateScoreMutation.mutate({ 
+                                        studentId: editingCell.student_id || sc.student_id || studentId,
+                                        subjectId: sc.subject_id, 
+                                        assessmentId: assessmentId, 
+                                        newMarks: editingCell.value 
+                                      })
+                                    }}
+                                    disabled={overriding}
+                                  >
+                                    {overriding ? '...' : 'Save'}
+                                  </button>
+                                </div>
                                                                 ) : (
                                 <span className="group-hover:underline group-hover:text-blue-600">
                                   {sc?.marks != null ? sc.marks : <span className="text-slate-300">—</span>}
