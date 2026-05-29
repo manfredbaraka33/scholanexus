@@ -5,6 +5,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field
 
 from app.core.database import get_db
 from app.core.deps import require_admin, require_teacher
@@ -516,15 +517,11 @@ def _enrich_assignment(assignment: TeacherSubjectClass, db: Session) -> dict:
 
 
 
-
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from app.core.database import SessionLocal
-from app.models import Score
-from pydantic import BaseModel, Field
+# ── Regular Score Patch Update ───────────────────────────────────
 
 class ScorePatchRequest(BaseModel):
     marks: float = Field(..., ge=0.0, le=100.0)
+
 
 @router.patch("/scores/{score_id}", response_model=ScoreResponse)
 async def update_regular_score(
@@ -532,7 +529,7 @@ async def update_regular_score(
     data: ScorePatchRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user) # Normal authenticated teacher/staff
+    _=Depends(require_teacher)  # ✅ Using the valid dependency imported at your top line 11
 ):
     # 1. Locate the precise record instantly via its primary key
     score = db.query(Score).filter(Score.id == score_id).first()
@@ -547,7 +544,8 @@ async def update_regular_score(
     db.commit()
     db.refresh(score)
     
-    # 3. Trigger the lightweight background broadcast using our safe isolated session setup
+    # 3. Trigger the lightweight background broadcast safely
     background_tasks.add_task(_admin_broadcast, score.assessment_id)
     
     return score
+
