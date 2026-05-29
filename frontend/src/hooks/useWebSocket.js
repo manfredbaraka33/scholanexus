@@ -59,12 +59,8 @@
 
 
 
-
-
 import { useEffect, useRef, useState, useCallback } from 'react'
-
-// Vite automatically flags import.meta.env.PROD as true when building for Vercel
-const isProduction = import.meta.env.PROD
+import api from './api' // Adjust this path to match your file structure
 
 export function useLiveResults(assessmentId) {
   const [data, setData] = useState(null)
@@ -75,23 +71,12 @@ export function useLiveResults(assessmentId) {
   const fetchResults = useCallback(async () => {
     if (!assessmentId) return
 
-    // Using your standard, working REST API endpoint instead of the WebSocket one
-    const baseUrl = isProduction
-      ? `https://scholanexusapi.vercel.app/api/v1`
-      : `http://localhost:8000/api/v1`
-
     try {
-      // Changed the path to match your React Query endpoint
-      const response = await fetch(`${baseUrl}/results/standings?assessment_id=${assessmentId}`)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const jsonData = await response.json()
+      // Using your custom axios instance handles the base URL, token, and 401 logouts automatically
+      const response = await api.get(`/results/standings?assessment_id=${assessmentId}`)
       
       if (isMounted.current) {
-        setData(jsonData)
+        setData(response.data) // Axios stores the JSON payload inside .data
         setIsConnected(true)
       }
     } catch (error) {
@@ -99,7 +84,6 @@ export function useLiveResults(assessmentId) {
         setIsConnected(false)
       }
     } finally {
-      // Refresh every 5 seconds
       if (isMounted.current) {
         timeoutRef.current = setTimeout(fetchResults, 5000)
       }
@@ -122,5 +106,3 @@ export function useLiveResults(assessmentId) {
 
   return { data, isConnected }
 }
-
-
