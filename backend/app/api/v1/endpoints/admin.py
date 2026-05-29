@@ -442,14 +442,14 @@ async def override_score(
     _=Depends(require_teacher)
 ):
     print(f"DEBUG: Data received: {data.model_dump()}")
-    # 1. Look for the existing row using the composite keys
+    # 1. Fetch the absolute latest record from the DB
     score = db.query(Score).filter(
         Score.student_id == data.student_id,
         Score.subject_id == data.subject_id,
         Score.assessment_id == data.assessment_id
-    ).first()
+    ).with_for_update().first() # <-- Added locking for safety
     
-    # 2. If it is a brand new mark, create the row
+    # 2. Create if not exists
     if not score:
         score = Score(
             student_id=data.student_id,
@@ -458,18 +458,14 @@ async def override_score(
         )
         db.add(score)
         
-    # 3. Apply the marks and run structural conversions
+    # 3. Apply changes directly
     score.marks = data.marks
     score.grade = marks_to_grade(data.marks) if data.marks is not None else None
     score.points = grade_to_points(score.grade) if score.grade else 0
     
-    # FORCE THE UPDATE
-    # We use db.merge to ensure the object is correctly 
-    # tracked and marked for an UPDATE statement
-    db.merge(score) 
-    db.commit()
-    db.refresh(score)
-    # -----------------------------------
+    # 4. Flush and Commit
+    db.flush()
+    db.commit()-----------------
     
     # 4. Trigger the live background sync update
     background_tasks.add_task(_admin_broadcast, score.assessment_id)
