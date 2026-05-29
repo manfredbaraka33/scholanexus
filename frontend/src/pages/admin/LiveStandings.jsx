@@ -63,7 +63,7 @@ export default function LiveStandings() {
 
   const updateScoreMutation = useMutation({
   mutationFn: ({ studentId, subjectId, assessmentId, newMarks }) => 
-    api.patch(`/scores/update-regular?student_id=${studentId}&subject_id=${subjectId}&assessment_id=${assessmentId}`, { 
+    api.patch(`/update-regular?student_id=${studentId}&subject_id=${subjectId}&assessment_id=${assessmentId}`, { 
       marks: newMarks === '' ? null : parseFloat(newMarks) 
     }).then(r => r.data),
   
