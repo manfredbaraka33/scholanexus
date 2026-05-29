@@ -266,33 +266,36 @@ export default function LiveStandings() {
                             >
                               {editingCell?.studentId === row.student.id && editingCell?.subjectId === s.subject_id ? (
                                 <input
-                                  autoFocus
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  className="w-16 text-center border border-blue-400 rounded px-1 py-0.5 text-sm focus:outline-none"
-                                  value={editingCell.value}
-                                  onChange={e => setEditingCell(prev => ({ ...prev, value: e.target.value }))}
-                                  onKeyDown={e => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault()
-                                      submitOverrideIfChanged(row.student.id, s.subject_id, editingCell.value, sc?.marks)
-                                    }
-                                    if (e.key === 'Escape') {
-                                      cancelEditRef.current = true
-                                      setEditingCell(null)
-                                    }
-                                  }}
-                                  onBlur={() => {
-                                    if (cancelEditRef.current || overriding) {
-                                      cancelEditRef.current = false
-                                      return
-                                    }
-                                    submitOverrideIfChanged(row.student.id, s.subject_id, editingCell.value, sc?.marks)
-                                  }}
-                                  onClick={e => e.stopPropagation()}
-                                />
-                              ) : (
+                                    autoFocus
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    className="w-16 text-center border border-blue-400 rounded px-1 py-0.5 text-sm focus:outline-none"
+                                    value={editingCell.value}
+                                    onChange={e => setEditingCell(prev => ({ ...prev, value: e.target.value }))}
+                                    onKeyDown={e => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault()
+                                        e.target.blur() // 💡 Clever Patch: Let onBlur handle the submission safely
+                                      }
+                                      if (e.key === 'Escape') {
+                                        cancelEditRef.current = true
+                                        setEditingCell(null)
+                                      }
+                                    }}
+                                    onBlur={() => {
+                                      if (cancelEditRef.current || overriding) {
+                                        cancelEditRef.current = false
+                                        return
+                                      }
+                                      // Added a guard check to prevent crashes if it runs during unmount
+                                      if (editingCell) {
+                                        submitOverrideIfChanged(row.student.id, s.subject_id, editingCell.value, sc?.marks)
+                                      }
+                                    }}
+                                    onClick={e => e.stopPropagation()}
+                                  />
+                                                                ) : (
                                 <span className="group-hover:underline group-hover:text-blue-600">
                                   {sc?.marks != null ? sc.marks : <span className="text-slate-300">—</span>}
                                 </span>
