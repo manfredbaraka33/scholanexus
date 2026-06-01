@@ -22,7 +22,7 @@ export default function LiveStandings() {
 
   const { data: standingsData, isLoading } = useQuery({
     queryKey: ['standings', assessmentId],
-    queryFn: () => api.get(`/results/standings?assessment_id=${assessmentId}`).then(r => r.data),
+    queryFn: () => api.get(`/results/standings?assessment_id=${assessmentId}&_t=${Date.now()}`).then(r => r.data),
     enabled: !!assessmentId,
   })
 
