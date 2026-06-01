@@ -443,30 +443,6 @@ async def override_score(
     _=Depends(require_teacher)
 ):
     print(f"DEBUG: Data received: {data.model_dump()}")
-    # # 1. Fetch the absolute latest record from the DB
-    # score = db.query(Score).filter(
-    #     Score.student_id == data.student_id,
-    #     Score.subject_id == data.subject_id,
-    #     Score.assessment_id == data.assessment_id
-    # ).with_for_update().first() # <-- Added locking for safety
-    
-    # # 2. Create if not exists
-    # if not score:
-    #     score = Score(
-    #         student_id=data.student_id,
-    #         subject_id=data.subject_id,
-    #         assessment_id=data.assessment_id
-    #     )
-    #     db.add(score)
-        
-    # # 3. Apply changes directly
-    # score.marks = data.marks
-    # score.grade = marks_to_grade(data.marks) if data.marks is not None else None
-    # score.points = grade_to_points(score.grade) if score.grade else 0
-    
-    # # 4. Flush and Commit
-    # db.flush()
-    # db.commit()
 
     # 1. Look for the record
     score = db.query(Score).filter(
