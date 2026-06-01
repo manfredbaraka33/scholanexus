@@ -27,7 +27,7 @@ export default function LiveStandings() {
   })
 
   const { data: liveData, isConnected } = useLiveResults(assessmentId || null)
-  const results = liveData ?? standingsData
+  const results = standingsDat
 
   const assessLabel = { midterm_exam: 'Mid-Term Exam', terminal_exam: 'Terminal Exam', annual_exam: 'Annual Exam' }
   const normalizeMarks = (value) => (value === '' ? null : Math.max(0, Math.min(100, Number(value))))
