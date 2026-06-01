@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import AppLayout from '../../components/layout/Navbar'
 import Spinner from '../../components/ui/Spinner'
@@ -7,6 +7,8 @@ import api from '../../api/axios'
 import { useLiveResults } from '../../hooks/useWebSocket'
 import clsx from 'clsx'
 import toast from 'react-hot-toast'
+
+const DIVISIONS = ['Division I', 'Division II', 'Division III', 'Division IV', 'Division 0']
 
 export default function LiveStandings() {
   const [assessmentId, setAssessmentId] = useState('')
@@ -28,6 +30,32 @@ export default function LiveStandings() {
 
   const { data: liveData, isConnected } = useLiveResults(assessmentId || null)
   const results = liveData || standingsData
+
+  const divisionSummary = useMemo(() => {
+    if (!results?.students) return null
+
+    const counts = {}
+    DIVISIONS.forEach(d => { counts[d] = { boys: 0, girls: 0, total: 0 } })
+
+    results.students.forEach(row => {
+      const div = row.division
+      const gender = row.student.gender
+      if (counts[div]) {
+        if (gender === 'M') counts[div].boys++
+        else counts[div].girls++
+        counts[div].total++
+      }
+    })
+
+    const grandTotal = { boys: 0, girls: 0, total: 0 }
+    DIVISIONS.forEach(d => {
+      grandTotal.boys += counts[d].boys
+      grandTotal.girls += counts[d].girls
+      grandTotal.total += counts[d].total
+    })
+
+    return { counts, grandTotal }
+  }, [results])
 
   const assessLabel = { midterm_exam: 'Mid-Term Exam', terminal_exam: 'Terminal Exam', annual_exam: 'Annual Exam' }
   const normalizeMarks = (value) => (value === '' ? null : Math.max(0, Math.min(100, Number(value))))
@@ -219,6 +247,40 @@ export default function LiveStandings() {
               <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-4 text-sm text-blue-700">
                 ⚡ Rankings based on <strong>{results.submission_progress.submitted_subjects}</strong> of{' '}
                 <strong>{results.submission_progress.total_subjects}</strong> subjects submitted so far
+              </div>
+            )}
+
+            {divisionSummary && (
+              <div className="card mb-4">
+                <h3 className="text-sm font-semibold text-slate-700 mb-3">📊 NECTA Division Summary</h3>
+                <div className="overflow-x-auto">
+                  <table className="text-sm w-auto border-collapse">
+                    <thead>
+                      <tr className="bg-blue-900 text-white">
+                        <th className="px-4 py-2 text-left font-semibold border border-blue-800">Division</th>
+                        <th className="px-4 py-2 text-center font-semibold border border-blue-800">Boys</th>
+                        <th className="px-4 py-2 text-center font-semibold border border-blue-800">Girls</th>
+                        <th className="px-4 py-2 text-center font-semibold border border-blue-800">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {DIVISIONS.map((div, i) => (
+                        <tr key={div} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                          <td className="px-4 py-2 border border-slate-200 font-medium text-slate-700">{div}</td>
+                          <td className="px-4 py-2 border border-slate-200 text-center text-blue-700">{divisionSummary.counts[div].boys}</td>
+                          <td className="px-4 py-2 border border-slate-200 text-center text-pink-600">{divisionSummary.counts[div].girls}</td>
+                          <td className="px-4 py-2 border border-slate-200 text-center font-semibold">{divisionSummary.counts[div].total}</td>
+                        </tr>
+                      ))}
+                      <tr className="bg-blue-50 font-bold">
+                        <td className="px-4 py-2 border border-slate-300 text-slate-800">Grand Total</td>
+                        <td className="px-4 py-2 border border-slate-300 text-center text-blue-700">{divisionSummary.grandTotal.boys}</td>
+                        <td className="px-4 py-2 border border-slate-300 text-center text-pink-600">{divisionSummary.grandTotal.girls}</td>
+                        <td className="px-4 py-2 border border-slate-300 text-center text-slate-800">{divisionSummary.grandTotal.total}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
