@@ -490,14 +490,46 @@ def generate_report_cards_pdf(
     return buf.read()
 
 
+def _compute_division_summary(students: List[Dict[str, Any]]) -> Dict[str, Any]:
+    divisions = ["Division I", "Division II", "Division III", "Division IV", "Division 0"]
+    counts = {d: {"boys": 0, "girls": 0, "total": 0} for d in divisions}
+    default_division = "Division 0"
+
+    for row in students:
+        div = row.get("division", default_division)
+        gender = row.get("student", {}).get("gender")
+        if div in counts:
+            if gender == "M":
+                counts[div]["boys"] += 1
+            else:
+                counts[div]["girls"] += 1
+            counts[div]["total"] += 1
+
+    grand = {"boys": 0, "girls": 0, "total": 0}
+    for d in divisions:
+        grand["boys"] += counts[d]["boys"]
+        grand["girls"] += counts[d]["girls"]
+        grand["total"] += counts[d]["total"]
+
+    return {"counts": counts, "grand": grand, "divisions": divisions}
+
+
 def generate_standings_pdf(
     sorted_students: List[Dict[str, Any]],
     subject_cols: List[Dict[str, Any]],
     assessment_name: str,
     class_name: str,
     academic_year: str,
+    division_summary: Optional[Dict[str, Any]] = None,
 ) -> bytes:
-    """Generate a landscape A4 PDF of the live standings table."""
+    """Generate a landscape A4 PDF of the live standings table.
+
+    division_summary, when provided, should include:
+    - counts: per-division dict with boys/girls/total counts
+    - grand: overall boys/girls/total counts
+    - divisions: ordered list of division labels
+    If omitted, the summary is computed from sorted_students.
+    """
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
@@ -524,6 +556,39 @@ def generate_standings_pdf(
     ))
     story.append(HRFlowable(width="100%", thickness=2, color=NAVY))
     story.append(Spacer(1, 4 * mm))
+
+    # ── Division Summary Table ───────────────────────────────────
+    div_summary = division_summary or _compute_division_summary(sorted_students)
+    story.append(Paragraph("NECTA Division Summary", ParagraphStyle(
+        "DivHead", fontSize=10, fontName="Helvetica-Bold",
+        textColor=NAVY, spaceAfter=3,
+    )))
+
+    div_header = ["Division", "Boys", "Girls", "Total"]
+    div_table_data = [div_header]
+    for d in div_summary["divisions"]:
+        c = div_summary["counts"][d]
+        div_table_data.append([d, str(c["boys"]), str(c["girls"]), str(c["total"])])
+    g = div_summary["grand"]
+    div_table_data.append(["Grand Total", str(g["boys"]), str(g["girls"]), str(g["total"])])
+
+    div_t = Table(div_table_data, colWidths=[45*mm, 25*mm, 25*mm, 25*mm])
+    div_t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), NAVY),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+        ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#eff6ff")),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("ALIGN", (0, 0), (0, -1), "LEFT"),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -2), [colors.white, colors.HexColor("#f8fafc")]),
+        ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#e2e8f0")),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story.append(div_t)
+    story.append(Spacer(1, 5 * mm))
 
     # Header row
     header = ["S/No", "First Name", "Middle Name", "Last Name", "G"]
