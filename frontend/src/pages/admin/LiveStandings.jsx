@@ -27,7 +27,7 @@ export default function LiveStandings() {
   })
 
   const { data: liveData, isConnected } = useLiveResults(assessmentId || null)
-  const results = standingsData
+  const results = liveData || standingsData
 
   const assessLabel = { midterm_exam: 'Mid-Term Exam', terminal_exam: 'Terminal Exam', annual_exam: 'Annual Exam' }
   const normalizeMarks = (value) => (value === '' ? null : Math.max(0, Math.min(100, Number(value))))
@@ -54,7 +54,7 @@ export default function LiveStandings() {
     mutationFn: (payload) => api.post('/admin/scores/override', payload).then(r => r.data),
     onMutate: () => setOverriding(true),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['standings', assessmentId] })
+      queryClient.refetchQueries({ queryKey: ['standings', assessmentId] })
       toast.success('Mark saved reliably!')
       setEditingCell(null)
     },

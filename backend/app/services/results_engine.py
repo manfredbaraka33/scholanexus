@@ -28,6 +28,9 @@ async def compile_class_results(assessment_id: int, db: Session) -> Dict[str, An
     5. Rank students by average marks (handle ties)
     6. Return structured dict
     """
+    # Expire all cached ORM objects so this session always reads committed data from the DB.
+    # This prevents SQLAlchemy's identity-map cache from serving stale Score rows after an admin override.
+    db.expire_all()
     assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
     if not assessment:
         return {}
