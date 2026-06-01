@@ -437,8 +437,7 @@ def toggle_publish_assessment(
 
 @router.post("/scores/override", response_model=ScoreResponse)
 async def override_score(
-    data: AdminScoreOverrideRequest, # ✅ Fixed: using the correct imported schema
-    background_tasks: BackgroundTasks,
+    data: AdminScoreOverrideRequest,
     db: Session = Depends(get_db),
     _=Depends(require_teacher)
 ):
@@ -460,44 +459,45 @@ async def override_score(
         )
         db.add(score)
         # Flush to generate the ID immediately
-        db.flush() 
+        db.flush()
 
     # 3. Update the attributes
     score.marks = data.marks
     score.grade = marks_to_grade(data.marks) if data.marks is not None else None
     score.points = grade_to_points(score.grade) if score.grade else 0
-    score.is_submitted = True # Ensure this is marked as True
+    score.is_submitted = True
     score.submitted_at = datetime.utcnow()
 
     # 4. Commit the changes
     db.commit()
     db.refresh(score)
-    
-    # 4. Trigger the live background sync update
-    background_tasks.add_task(_admin_broadcast, score.assessment_id)
-    
-    return score
 
+    # 5. Await the broadcast BEFORE returning the response.
+    #    This guarantees compile_class_results has finished and the WebSocket push
+    #    has been sent before the client receives 200 OK. Any subsequent GET
+    #    /results/standings will therefore read fully recalculated standings.
+    await _admin_broadcast(score.assessment_id)
+
+    return score
 
 
 
 async def _admin_broadcast(assessment_id: int):
     try:
-        from app.core.database import SessionLocal 
+        from app.core.database import SessionLocal
         from app.services.results_engine import compile_class_results
         from main import manager
-        
-        print(f"DEBUG: Starting broadcast for assessment {assessment_id}") # ADD THIS
-        
+
+        print(f"DEBUG: Starting broadcast for assessment {assessment_id}")
+
         with SessionLocal() as session:
             results = await compile_class_results(assessment_id, session)
-            print(f"DEBUG: Results compiled. Broadcasting...") # ADD THIS
+            print(f"DEBUG: Results compiled. Broadcasting...")
             await manager.broadcast(assessment_id, results)
-            print(f"DEBUG: Broadcast successful.") # ADD THIS
-            
+            print(f"DEBUG: Broadcast successful.")
+
     except Exception as e:
-        # Change this to print the actual error
-        print(f"CRITICAL ERROR in _admin_broadcast: {str(e)}") 
+        print(f"CRITICAL ERROR in _admin_broadcast: {str(e)}")
         logger.exception("Failed to broadcast admin score override for assessment_id=%s", assessment_id)
 
 
@@ -533,26 +533,26 @@ async def update_regular_score(
     subject_id: int,
     assessment_id: int,
     data: ScorePatchRequest,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     _=Depends(require_teacher)
 ):
-    # The database will now query matching Integer against Integer flawlessly
     score = db.query(Score).filter(
         Score.student_id == student_id,
         Score.subject_id == subject_id,
         Score.assessment_id == assessment_id
     ).first()
-    
+
     if not score:
         raise HTTPException(status_code=404, detail="Score record truly not found")
-        
+
     score.marks = data.marks
     score.grade = marks_to_grade(data.marks) if data.marks is not None else None
     score.points = grade_to_points(score.grade) if score.grade else 0
-    
+
     db.commit()
     db.refresh(score)
-    background_tasks.add_task(_admin_broadcast, score.assessment_id)
-    return score
 
+    # Same fix as override_score: await before returning so the client always
+    # sees consistent standings on the very next request.
+    await _admin_broadcast(score.assessment_id)
+    return score

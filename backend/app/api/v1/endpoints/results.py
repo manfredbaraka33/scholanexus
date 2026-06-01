@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -8,6 +9,15 @@ from app.services.results_engine import compile_class_results, get_submission_pr
 from app.services.analytics import get_class_analytics
 
 router = APIRouter(prefix="/results", tags=["results"])
+
+# Headers that prevent every layer (browser, Vercel CDN edge, proxies) from
+# caching the standings JSON. Without these, Vercel can serve a stale edge-
+# cached response for several seconds after an admin override is committed.
+_NO_CACHE_HEADERS = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
 
 
 @router.get("/progress")
@@ -25,7 +35,8 @@ async def live_standings(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher),
 ):
-    return await compile_class_results(assessment_id, db)
+    data = await compile_class_results(assessment_id, db)
+    return JSONResponse(content=data, headers=_NO_CACHE_HEADERS)
 
 
 @router.get("/analytics")
