@@ -2,7 +2,7 @@ import csv
 import io
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
@@ -10,7 +10,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from datetime import datetime
 
 from app.core.database import get_db
-from app.core.deps import require_admin, require_teacher
+from app.core.deps import require_admin, require_teacher, require_admin_or_teacher
 from app.core.security import hash_password
 from app.models.user import User, UserRole
 from app.models.class_ import Class_
@@ -299,7 +299,6 @@ def create_subject(data: SubjectCreate, db: Session = Depends(get_db), _=Depends
     try:
         db.refresh(subj)
     except Exception as e:
-        # Fallback safeguard: if database defaults fail to refresh, manually assign state
         db.rollback()
         raise HTTPException(
             status_code=500, 
@@ -434,31 +433,31 @@ def toggle_publish_assessment(
     return {"id": assessment.id, "is_published": assessment.is_published}
 
 
+# ── Score Override ────────────────────────────────────────────────
 
 @router.post("/scores/override", response_model=ScoreResponse)
 async def override_score(
     data: AdminScoreOverrideRequest,
     db: Session = Depends(get_db),
-    _=Depends(require_teacher)
+    # require_admin_or_teacher: guards against both bare-string and enum drift;
+    # both admin and teacher sessions are explicitly permitted.
+    _=Depends(require_admin_or_teacher),
 ):
-    print(f"DEBUG: Data received: {data.model_dump()}")
-
     # 1. Look for the record
     score = db.query(Score).filter(
         Score.student_id == data.student_id,
         Score.subject_id == data.subject_id,
-        Score.assessment_id == data.assessment_id
+        Score.assessment_id == data.assessment_id,
     ).first()
-    
+
     # 2. If it doesn't exist, create it
     if not score:
         score = Score(
             student_id=data.student_id,
             subject_id=data.subject_id,
-            assessment_id=data.assessment_id
+            assessment_id=data.assessment_id,
         )
         db.add(score)
-        # Flush to generate the ID immediately
         db.flush()
 
     # 3. Update the attributes
@@ -468,41 +467,53 @@ async def override_score(
     score.is_submitted = True
     score.submitted_at = datetime.utcnow()
 
-    # 4. Commit the changes
+    # 4. Commit the score write
     db.commit()
     db.refresh(score)
 
-    # 5. Await the broadcast BEFORE returning the response.
-    #    This guarantees compile_class_results has finished and the WebSocket push
-    #    has been sent before the client receives 200 OK. Any subsequent GET
-    #    /results/standings will therefore read fully recalculated standings.
+    # 5. Compile standings and broadcast, awaited inline so any failure surfaces
+    #    as an HTTP 500 rather than a silent swallow that returns a false 200 OK.
     await _admin_broadcast(score.assessment_id)
 
     return score
 
 
-
 async def _admin_broadcast(assessment_id: int):
+    """
+    Compile class results and broadcast to all live WebSocket subscribers.
+
+    Exceptions are intentionally NOT caught here.  Any failure (DB query error,
+    results-engine bug, WebSocket send error) propagates up to the calling
+    endpoint which will convert it to an HTTPException(500), ensuring the
+    frontend never receives a false-success 200 OK when the update failed.
+    """
+    from app.core.database import SessionLocal
+    from app.services.results_engine import compile_class_results
+    from main import manager
+
+    logger.debug("Starting broadcast for assessment_id=%s", assessment_id)
+
     try:
-        from app.core.database import SessionLocal
-        from app.services.results_engine import compile_class_results
-        from main import manager
-
-        print(f"DEBUG: Starting broadcast for assessment {assessment_id}")
-
         with SessionLocal() as session:
             results = await compile_class_results(assessment_id, session)
-            print(f"DEBUG: Results compiled. Broadcasting...")
             await manager.broadcast(assessment_id, results)
-            print(f"DEBUG: Broadcast successful.")
+            logger.debug("Broadcast complete for assessment_id=%s", assessment_id)
+    except Exception as exc:
+        # Log the full traceback so it appears in server logs for diagnosis,
+        # then re-raise as an HTTPException so FastAPI returns 500 to the client.
+        logger.exception(
+            "Broadcast/compilation failed for assessment_id=%s", assessment_id
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Score was saved but standings compilation failed: {exc}. "
+                "Please refresh the standings page manually."
+            ),
+        ) from exc
 
-    except Exception as e:
-        print(f"CRITICAL ERROR in _admin_broadcast: {str(e)}")
-        logger.exception("Failed to broadcast admin score override for assessment_id=%s", assessment_id)
 
-
-
-# ── Helpers ──────────────────────────────────────────────────────
+# ── Helpers ──────���───────────────────────────────────────────────
 
 def _enrich_assignment(assignment: TeacherSubjectClass, db: Session) -> dict:
     teacher = db.query(User).filter(User.id == assignment.teacher_id).first()
@@ -520,7 +531,6 @@ def _enrich_assignment(assignment: TeacherSubjectClass, db: Session) -> dict:
     }
 
 
-
 # ── Regular Score Patch Update ───────────────────────────────────
 
 class ScorePatchRequest(BaseModel):
@@ -534,16 +544,16 @@ async def update_regular_score(
     assessment_id: int,
     data: ScorePatchRequest,
     db: Session = Depends(get_db),
-    _=Depends(require_teacher)
+    _=Depends(require_admin_or_teacher),
 ):
     score = db.query(Score).filter(
         Score.student_id == student_id,
         Score.subject_id == subject_id,
-        Score.assessment_id == assessment_id
+        Score.assessment_id == assessment_id,
     ).first()
 
     if not score:
-        raise HTTPException(status_code=404, detail="Score record truly not found")
+        raise HTTPException(status_code=404, detail="Score record not found")
 
     score.marks = data.marks
     score.grade = marks_to_grade(data.marks) if data.marks is not None else None
@@ -552,7 +562,6 @@ async def update_regular_score(
     db.commit()
     db.refresh(score)
 
-    # Same fix as override_score: await before returning so the client always
-    # sees consistent standings on the very next request.
+    # Await broadcast; failure propagates as HTTP 500 (same contract as override_score).
     await _admin_broadcast(score.assessment_id)
     return score
