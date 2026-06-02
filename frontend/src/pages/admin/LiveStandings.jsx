@@ -29,7 +29,7 @@ export default function LiveStandings() {
   })
 
   const { data: liveData, isConnected } = useLiveResults(assessmentId || null)
-  const results = liveData || standingsData
+  const results = standingsData || liveData
 
   const divisionSummary = useMemo(() => {
     if (!results?.students) return null
@@ -228,6 +228,7 @@ export default function LiveStandings() {
             ))}
           </select>
           <p className="text-xs text-slate-400 mt-1">💡 Click any mark cell in the table to edit it (admin override).</p>
+          <p className="text-xs text-amber-700 mt-1">ℹ️ Only submitted scores are included in standings. Saved (draft) scores are not yet counted.</p>
         </div>
 
         {!assessmentId && (

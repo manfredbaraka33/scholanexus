@@ -15,6 +15,12 @@ from app.utils.necta import marks_to_grade, grade_to_points
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
+_NO_CACHE_HEADERS = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
+
 
 @router.get("/scoresheet/{assessment_id}/{subject_id}")
 async def get_scoresheet_pdf(
@@ -180,7 +186,10 @@ async def get_standings_pdf(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={
+            **_NO_CACHE_HEADERS,
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
     )
 
 
