@@ -217,7 +217,7 @@ export default function ScoreSheet() {
           <>
             {/* Score Table */}
             <div className="card p-0 overflow-x-auto mb-6">
-              <table className="w-full text-sm">
+              <table className="min-w-full text-sm">
                 <thead className="table-head">
                   <tr>
                     <th className="px-4 py-3 text-left w-10">#</th>
@@ -275,26 +275,28 @@ export default function ScoreSheet() {
               {/* Grade Distribution */}
               <div className="card">
                 <h3 className="font-semibold text-slate-700 mb-3 text-sm">Grade Distribution</h3>
-                <table className="w-full text-sm">
-                  <thead><tr className="text-xs text-slate-500 font-semibold">
-                    <th className="py-1 text-left">Grade</th>
-                    <th className="py-1 text-center">Male</th>
-                    <th className="py-1 text-center">Female</th>
-                    <th className="py-1 text-center">Total</th>
-                  </tr></thead>
-                  <tbody>
-                    {GRADES.map(g => (
-                      <tr key={g} className="border-t border-slate-50">
-                        <td className="py-1.5">
-                          <span className={clsx('px-2 py-0.5 rounded-full text-xs font-semibold', gradeColors[g])}>{g}</span>
-                        </td>
-                        <td className="py-1.5 text-center text-slate-700">{dist[g].M}</td>
-                        <td className="py-1.5 text-center text-slate-700">{dist[g].F}</td>
-                        <td className="py-1.5 text-center font-semibold">{dist[g].M + dist[g].F}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead><tr className="text-xs text-slate-500 font-semibold">
+                      <th className="py-1 text-left">Grade</th>
+                      <th className="py-1 text-center">Male</th>
+                      <th className="py-1 text-center">Female</th>
+                      <th className="py-1 text-center">Total</th>
+                    </tr></thead>
+                    <tbody>
+                      {GRADES.map(g => (
+                        <tr key={g} className="border-t border-slate-50">
+                          <td className="py-1.5">
+                            <span className={clsx('px-2 py-0.5 rounded-full text-xs font-semibold', gradeColors[g])}>{g}</span>
+                          </td>
+                          <td className="py-1.5 text-center text-slate-700">{dist[g].M}</td>
+                          <td className="py-1.5 text-center text-slate-700">{dist[g].F}</td>
+                          <td className="py-1.5 text-center font-semibold">{dist[g].M + dist[g].F}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* GPA + Doughnut */}

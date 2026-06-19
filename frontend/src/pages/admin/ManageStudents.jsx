@@ -130,7 +130,7 @@ export default function ManageStudents() {
           ) : !students.length ? (
             <div className="text-center py-16 text-slate-500">No students found. Add students above.</div>
           ) : (
-            <table className="w-full text-sm">
+            <table className="min-w-full text-sm">
               <thead className="table-head">
                 <tr>
                   <th className="px-4 py-3 text-left text-slate-400 font-medium w-10">#</th>

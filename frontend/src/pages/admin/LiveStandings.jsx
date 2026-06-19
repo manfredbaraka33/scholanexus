@@ -286,7 +286,7 @@ export default function LiveStandings() {
             )}
 
             <div className="card p-0 overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="min-w-full text-sm">
                 <thead className="table-head">
                   <tr>
                     <th className="px-3 py-3 text-center">S/No</th>

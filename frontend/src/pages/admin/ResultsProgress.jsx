@@ -93,7 +93,7 @@ export default function ResultsProgress() {
 
             {/* Subject table */}
             <div className="card p-0 overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="min-w-full text-sm">
                 <thead className="table-head">
                   <tr>
                     <th className="px-4 py-3 text-left">Subject</th>

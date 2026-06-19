@@ -106,28 +106,30 @@ export default function ClassAnalytics() {
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <table className="text-sm w-full">
-                      <thead><tr className="text-xs text-slate-500 font-semibold">
-                        <th className="py-1 text-left">Grade</th>
-                        <th className="py-1 text-center">M</th>
-                        <th className="py-1 text-center">F</th>
-                        <th className="py-1 text-center">Total</th>
-                      </tr></thead>
-                      <tbody>
-                        {GRADES.map(g => {
-                          const m = subj.grade_counts?.[g]?.M ?? 0
-                          const f = subj.grade_counts?.[g]?.F ?? 0
-                          return (
-                            <tr key={g} className="border-t border-slate-50">
-                              <td className="py-1.5"><span className={clsx('px-2 py-0.5 rounded-full text-xs font-semibold', gradeColors[g])}>{g}</span></td>
-                              <td className="py-1.5 text-center">{m}</td>
-                              <td className="py-1.5 text-center">{f}</td>
-                              <td className="py-1.5 text-center font-semibold">{m+f}</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead><tr className="text-xs text-slate-500 font-semibold">
+                          <th className="py-1 text-left">Grade</th>
+                          <th className="py-1 text-center">M</th>
+                          <th className="py-1 text-center">F</th>
+                          <th className="py-1 text-center">Total</th>
+                        </tr></thead>
+                        <tbody>
+                          {GRADES.map(g => {
+                            const m = subj.grade_counts?.[g]?.M ?? 0
+                            const f = subj.grade_counts?.[g]?.F ?? 0
+                            return (
+                              <tr key={g} className="border-t border-slate-50">
+                                <td className="py-1.5"><span className={clsx('px-2 py-0.5 rounded-full text-xs font-semibold', gradeColors[g])}>{g}</span></td>
+                                <td className="py-1.5 text-center">{m}</td>
+                                <td className="py-1.5 text-center">{f}</td>
+                                <td className="py-1.5 text-center font-semibold">{m+f}</td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                     <div className="h-40">
                       <Bar data={barData} options={{ plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } } }, maintainAspectRatio: false }} />
                     </div>
